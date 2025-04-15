@@ -1,0 +1,94 @@
+import { useState } from "react";
+import Header from "@/components/header";
+import RoleSelector from "@/components/role-selector";
+import PromptFeed from "@/components/prompt-feed";
+import PreviousCollaborations from "@/components/previous-collaborations";
+import PopularPrompts from "@/components/popular-prompts";
+import UploadModal from "@/components/upload-modal";
+import SuccessOverlay from "@/components/success-overlay";
+import { Prompt, UserRole } from "@/lib/types";
+import { useQuery } from "@tanstack/react-query";
+import { useRoleStore } from "@/hooks/use-role";
+import Confetti from "@/components/confetti";
+
+export default function Home() {
+  const { role } = useRoleStore();
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
+
+  const { data: writerPrompts = [] } = useQuery({
+    queryKey: ['/api/prompts', 'sketcher'],
+    staleTime: 1000 * 60, // 1 minute
+  });
+
+  const { data: sketcherPrompts = [] } = useQuery({
+    queryKey: ['/api/prompts', 'writer'],
+    staleTime: 1000 * 60, // 1 minute
+  });
+
+  const { data: collaborations = [] } = useQuery({
+    queryKey: ['/api/collaborations'],
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const { data: popularPrompts = [] } = useQuery({
+    queryKey: ['/api/prompts/popular'],
+    staleTime: 1000 * 60 * 15, // 15 minutes
+  });
+
+  const handleUploadClick = (prompt: Prompt) => {
+    setSelectedPrompt(prompt);
+    setShowUploadModal(true);
+  };
+
+  const handleSubmitUpload = () => {
+    setShowUploadModal(false);
+    setShowConfetti(true);
+    
+    // Show success overlay after a slight delay to allow confetti to start
+    setTimeout(() => {
+      setShowSuccessOverlay(true);
+    }, 300);
+  };
+
+  const handleCloseSuccess = () => {
+    setShowSuccessOverlay(false);
+    setShowConfetti(false);
+  };
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: "#10998A" }}>
+      <div className="max-w-6xl mx-auto p-4 sm:p-6">
+        <Header />
+        <RoleSelector />
+        
+        <div className="mb-12">
+          <PromptFeed
+            prompts={role === UserRole.Writer ? writerPrompts : sketcherPrompts}
+            onUploadClick={handleUploadClick}
+          />
+        </div>
+        
+        <PreviousCollaborations collaborations={collaborations} />
+        
+        <PopularPrompts prompts={popularPrompts} />
+      </div>
+      
+      {showUploadModal && (
+        <UploadModal
+          prompt={selectedPrompt}
+          onClose={() => setShowUploadModal(false)}
+          onSubmit={handleSubmitUpload}
+        />
+      )}
+      
+      {showSuccessOverlay && (
+        <SuccessOverlay onClose={handleCloseSuccess} />
+      )}
+      
+      {showConfetti && <Confetti />}
+    </div>
+  );
+}
