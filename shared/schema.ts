@@ -7,41 +7,38 @@ export const prompts = pgTable("prompts", {
   id: uuid("id").primaryKey().defaultRandom(),
   type: text("type").notNull(), // "text" or "image"
   content: text("content").notNull(),
-  author: text("author").default("anon"), // Optioneel, kan 'anon' of gebruikers-id zijn
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  // Extra eigenschappen voor de UI
-  isActive: boolean("is_active").default(false),
+  isActive: boolean("is_active").default(true),
   isDaily: boolean("is_daily").default(false),
+  // Extra eigenschappen voor de UI
   contributionsCount: integer("contributions_count").default(0),
-  commentsCount: integer("comments_count").default(0),
 });
 
 // Submissions table
 export const submissions = pgTable("submissions", {
   id: uuid("id").primaryKey().defaultRandom(),
   promptId: uuid("prompt_id").references(() => prompts.id).notNull(),
-  type: text("type").notNull(), // "text" or "image"
+  userId: uuid("user_id").notNull(), // null mogelijk voor anonieme gebruikers
+  type: text("type").notNull(), // "text" or "image" 
   content: text("content").notNull(),
-  author: text("author").default("anon"), // Optioneel, kan 'anon' of gebruikers-id zijn
   createdAt: timestamp("created_at").defaultNow().notNull(),
   likes: integer("likes").default(0),
   comments: integer("comments").default(0),
 });
 
-// Likes table to track likes on submissions
+// Likes table 
 export const likes = pgTable("likes", {
   id: uuid("id").primaryKey().defaultRandom(),
   submissionId: uuid("submission_id").references(() => submissions.id).notNull(),
-  userId: text("user_id").default("anon"), // Optioneel voor anonieme likes
+  userId: uuid("user_id"), // null mogelijk voor anonieme likes
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Comments table for both prompts and submissions
+// Comments table
 export const comments = pgTable("comments", {
   id: uuid("id").primaryKey().defaultRandom(),
-  contentType: text("content_type").notNull(), // "prompt" of "submission"
-  contentId: uuid("content_id").notNull(), // ID van de prompt of submission
-  userId: text("user_id").default("anon"), // Optioneel, kan anoniem zijn
+  submissionId: uuid("submission_id").references(() => submissions.id).notNull(),
+  userId: uuid("user_id"), // null mogelijk voor anonieme comments
   text: text("text").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -50,21 +47,19 @@ export const comments = pgTable("comments", {
 export const insertPromptSchema = createInsertSchema(prompts).pick({
   type: true,
   content: true,
-  author: true,
   isActive: true,
   isDaily: true,
-}).partial({ author: true, isActive: true, isDaily: true });
+}).partial({ isActive: true, isDaily: true });
 
 export const insertSubmissionSchema = createInsertSchema(submissions).pick({
   promptId: true,
+  userId: true,
   type: true,
   content: true,
-  author: true,
-}).partial({ author: true });
+}).partial({ userId: true });
 
 export const insertCommentSchema = createInsertSchema(comments).pick({
-  contentType: true,
-  contentId: true,
+  submissionId: true,
   userId: true,
   text: true,
 }).partial({ userId: true });
