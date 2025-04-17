@@ -41,13 +41,13 @@ export default function PromptCard({
     >
       {isDaily && (
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-          <Badge variant="secondary" className="bg-[#FFC73B] text-black">Vandaag</Badge>
+          <Badge variant="secondary" className="bg-accent text-accent-foreground">Vandaag</Badge>
         </div>
       )}
       <div className="absolute top-2 right-2 z-10">
         <Badge 
           variant="outline" 
-          className={`${prompt.type === 'text' ? 'bg-[#4B7BF5]/10' : 'bg-[#FF8A5B]/10'} text-xs`}
+          className={`${prompt.type === 'text' ? 'bg-blue-500/10' : 'bg-orange-500/10'} text-xs`}
         >
           {prompt.type === 'text' ? (
             <><i className="fas fa-pen mr-1"></i> Tekst</>
