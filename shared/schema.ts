@@ -1,4 +1,5 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -55,6 +56,61 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Relations for users
+export const usersRelations = relations(users, ({ many }) => ({
+  prompts: many(prompts),
+  submissions: many(submissions),
+  likes: many(likes),
+  comments: many(comments),
+}));
+
+// Relations for prompts
+export const promptsRelations = relations(prompts, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [prompts.creatorId],
+    references: [users.id],
+  }),
+  submissions: many(submissions),
+}));
+
+// Relations for submissions
+export const submissionsRelations = relations(submissions, ({ one, many }) => ({
+  prompt: one(prompts, {
+    fields: [submissions.promptId],
+    references: [prompts.id],
+  }),
+  user: one(users, {
+    fields: [submissions.userId],
+    references: [users.id],
+  }),
+  likes: many(likes),
+  comments: many(comments),
+}));
+
+// Relations for likes
+export const likesRelations = relations(likes, ({ one }) => ({
+  user: one(users, {
+    fields: [likes.userId],
+    references: [users.id],
+  }),
+  submission: one(submissions, {
+    fields: [likes.submissionId],
+    references: [submissions.id],
+  }),
+}));
+
+// Relations for comments
+export const commentsRelations = relations(comments, ({ one }) => ({
+  user: one(users, {
+    fields: [comments.userId],
+    references: [users.id],
+  }),
+  submission: one(submissions, {
+    fields: [comments.submissionId],
+    references: [submissions.id],
+  }),
+}));
+
 // Zod schemas for validation
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -85,12 +141,16 @@ export const insertCommentSchema = createInsertSchema(comments).pick({
   submissionId: true, 
   userId: true,
   content: true,
-});
+})
+  // fallback voor anonieme comments
+  .partial({ userId: true });
 
 export const insertLikeSchema = createInsertSchema(likes).pick({
   userId: true,
   submissionId: true,
-});
+})
+  // fallback voor anonieme likes
+  .partial({ userId: true });
 
 // Types
 export type User = typeof users.$inferSelect;
