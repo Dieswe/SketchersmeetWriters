@@ -163,11 +163,11 @@ export class DatabaseStorage implements IStorage {
       .values(insertComment)
       .returning();
     
-    // Update submission comment count
+    // Update submission comment count with COALESCE to safely handle null values
     await db
       .update(submissions)
       .set({
-        comments: sql`${submissions.comments} + 1`,
+        comments: sql`COALESCE(${submissions.comments}, 0) + 1`,
       })
       .where(eq(submissions.id, insertComment.submissionId));
     
