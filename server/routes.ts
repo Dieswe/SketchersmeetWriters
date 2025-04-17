@@ -42,7 +42,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Format submission for API response
-  const formatSubmission = async (submission: any, userId?: number) => {
+  const formatSubmission = async (submission: any, userId?: string) => {
     const creator = submission.userId ? await storage.getUser(submission.userId) : null;
     const isLiked = userId && await storage.getLike(userId, submission.id) !== undefined;
     
@@ -99,14 +99,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error fetching popular prompts" });
     }
   });
+  
+  // GET daily prompts
+  router.get("/prompts/daily", async (req: Request, res: Response) => {
+    try {
+      // Get all daily prompts from database
+      const prompts = await storage.getDailyPrompts();
+      const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
+      res.json(formattedPrompts);
+    } catch (error) {
+      console.error("Error fetching daily prompts:", error);
+      res.status(500).json({ message: "Error fetching daily prompts" });
+    }
+  });
 
   // GET single prompt
   router.get("/prompts/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid prompt ID" });
-      }
+      const id = req.params.id;
       
       const prompt = await storage.getPrompt(id);
       if (!prompt) {
@@ -124,10 +134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET submissions for a prompt
   router.get("/prompts/:id/submissions", async (req: Request, res: Response) => {
     try {
-      const promptId = parseInt(req.params.id);
-      if (isNaN(promptId)) {
-        return res.status(400).json({ message: "Invalid prompt ID" });
-      }
+      const promptId = req.params.id;
       
       const prompt = await storage.getPrompt(promptId);
       if (!prompt) {
@@ -135,7 +142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const submissions = await storage.getSubmissionsByPromptId(promptId);
-      const userId = 1; // Mock user ID for now
+      const userId = "1"; // Mock user ID for now as string
       const formattedSubmissions = await Promise.all(
         submissions.map(sub => formatSubmission(sub, userId))
       );
@@ -230,8 +237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST like submission
   router.post("/submissions/:id/like", async (req: Request, res: Response) => {
     try {
-      const submissionId = parseInt(req.params.id);
-      const userId = 1; // For now, use a fixed user ID (guest user)
+      const submissionId = req.params.id;
+      const userId = "1"; // For now, use a fixed user ID (guest user) as string
       // const userId = req.session?.userId; // If using sessions
       
       const submission = await storage.getSubmission(submissionId);
@@ -258,8 +265,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST comment on submission
   router.post("/submissions/:id/comments", async (req: Request, res: Response) => {
     try {
-      const submissionId = parseInt(req.params.id);
-      const userId = 1; // For now, use a fixed user ID (guest user)
+      const submissionId = req.params.id;
+      const userId = "1"; // For now, use a fixed user ID (guest user) as string
       // const userId = req.session?.userId; // If using sessions
       
       const validatedData = insertCommentSchema.parse({

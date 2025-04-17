@@ -202,7 +202,7 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(submissions)
       .set({
-        likes: sql`${submissions.likes} + 1`,
+        likes: sql`COALESCE(${submissions.likes}, 0) + 1`,
       })
       .where(eq(submissions.id, insertLike.submissionId));
     
@@ -227,7 +227,7 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(submissions)
       .set({
-        likes: sql`GREATEST(${submissions.likes} - 1, 0)`,
+        likes: sql`GREATEST(COALESCE(${submissions.likes}, 0) - 1, 0)`,
       })
       .where(eq(submissions.id, submissionId));
   }
