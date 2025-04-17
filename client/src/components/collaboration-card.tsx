@@ -17,7 +17,7 @@ export default function CollaborationCard({ collaboration }: CollaborationCardPr
     >
       <Link to={`/submissions/${collaboration.promptId}`}>
         <Card 
-          className="shadow-md overflow-hidden h-full cursor-pointer" 
+          className="bg-white/10 p-4 rounded-xl hover:bg-white/20 shadow-md overflow-hidden h-full cursor-pointer transition" 
           role="button"
           tabIndex={0}
           onKeyDown={e => { if (e.key === 'Enter') { window.location.href = `/submissions/${collaboration.promptId}`; } }}
@@ -29,11 +29,11 @@ export default function CollaborationCard({ collaboration }: CollaborationCardPr
                 <img 
                   src={collaboration.image} 
                   alt={collaboration.imageAlt || "Illustratie"}
-                  className="w-full h-48 object-cover" 
+                  className="w-full h-48 object-cover rounded-lg" 
                 />
               </div>
               <div className="w-full sm:w-1/2 p-4 flex flex-col">
-                <p className="text-sm flex-grow overflow-y-auto">
+                <p className="text-white text-sm flex-grow overflow-y-auto">
                   {collaboration.text}
                 </p>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
@@ -54,13 +54,13 @@ export default function CollaborationCard({ collaboration }: CollaborationCardPr
                         </div>
                       ))}
                     </div>
-                    <span className="text-xs text-muted">
+                    <span className="text-xs text-gray-300">
                       {collaboration.collaborators.length} samenwerkingen
                     </span>
                   </div>
                   <Button 
                     variant="ghost" 
-                    className="text-[#4B7BF5]"
+                    className="text-[#4B7BF5] hover:bg-white/10"
                     aria-label="Bekijk samenwerking"
                     onClick={(e) => {
                       e.stopPropagation();

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { Prompt } from "@/lib/types";
 import { motion } from "framer-motion";
@@ -39,10 +40,8 @@ export default function PromptCard({
       className={`relative flex-shrink-0 w-72 overflow-hidden ${isDaily ? "daily-prompt" : ""}`}
     >
       {isDaily && (
-        <div 
-          className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[#FFC73B] text-black px-2 py-1 rounded-md text-xs font-semibold z-10"
-        >
-          Vandaag
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+          <Badge variant="secondary">Daily</Badge>
         </div>
       )}
       <Link to={`/submissions/${prompt.id}`}>
@@ -66,12 +65,20 @@ export default function PromptCard({
               </div>
               <span className="font-medium">{prompt.creator.name}</span>
             </div>
-            {prompt.isActive && (
+            <div className="flex items-center gap-2">
               <div 
-                className="w-2 h-2 rounded-full bg-[#4CAF50] animate-pulse"
-                title="Active now"
-              />
-            )}
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-background/10"
+                title={prompt.type === 'text' ? "Tekst prompt" : "Afbeelding prompt"}
+              >
+                <i className={prompt.type === 'text' ? "fas fa-pen text-xs" : "fas fa-paint-brush text-xs"} aria-hidden="true"></i>
+              </div>
+              {prompt.isActive && (
+                <div 
+                  className="w-2 h-2 rounded-full bg-[#4CAF50] animate-pulse"
+                  title="Active now"
+                />
+              )}
+            </div>
           </CardHeader>
           
           <CardContent className="p-0">
