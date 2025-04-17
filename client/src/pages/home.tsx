@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/header";
 import RoleSelector from "@/components/role-selector";
 import PromptFeed from "@/components/prompt-feed";
@@ -6,9 +6,10 @@ import PreviousCollaborations from "@/components/previous-collaborations";
 import PopularPrompts from "@/components/popular-prompts";
 import UploadModal from "@/components/upload-modal";
 import SuccessOverlay from "@/components/success-overlay";
-import { Prompt, UserRole } from "@/lib/types";
+import { Prompt, UserRole, Collaboration } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { useRoleStore } from "@/hooks/use-role";
+import { queryClient } from "@/lib/queryClient";
 import Confetti from "@/components/confetti";
 
 export default function Home() {
@@ -18,22 +19,32 @@ export default function Home() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
 
-  const { data: writerPrompts = [] } = useQuery({
-    queryKey: ['/api/prompts', 'sketcher'],
+  // Dynamische query op basis van de geselecteerde rol
+  const roleType = role === UserRole.Writer ? 'sketcher' : 'writer';
+  
+  const { data: prompts = [] } = useQuery<Prompt[]>({
+    queryKey: ['/api/prompts', roleType],
+    queryFn: async () => {
+      const response = await fetch(`/api/prompts?type=${roleType}`);
+      if (!response.ok) {
+        throw new Error('Fout bij het ophalen van prompts');
+      }
+      return response.json();
+    },
     staleTime: 1000 * 60, // 1 minute
   });
+  
+  // Invalidate en refetch wanneer de rol verandert
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['/api/prompts'] });
+  }, [role]);
 
-  const { data: sketcherPrompts = [] } = useQuery({
-    queryKey: ['/api/prompts', 'writer'],
-    staleTime: 1000 * 60, // 1 minute
-  });
-
-  const { data: collaborations = [] } = useQuery({
+  const { data: collaborations = [] } = useQuery<Collaboration[]>({
     queryKey: ['/api/collaborations'],
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const { data: popularPrompts = [] } = useQuery({
+  const { data: popularPrompts = [] } = useQuery<Prompt[]>({
     queryKey: ['/api/prompts/popular'],
     staleTime: 1000 * 60 * 15, // 15 minutes
   });
@@ -66,7 +77,7 @@ export default function Home() {
         
         <div className="mb-12">
           <PromptFeed
-            prompts={role === UserRole.Writer ? writerPrompts : sketcherPrompts}
+            prompts={prompts}
             onUploadClick={handleUploadClick}
           />
         </div>
