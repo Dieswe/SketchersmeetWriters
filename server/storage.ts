@@ -13,34 +13,35 @@ import { db } from "./db";
 // Storage interface
 export interface IStorage {
   // User methods
-  getUser(id: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   
   // Prompt methods
-  getPrompt(id: number): Promise<Prompt | undefined>;
+  getPrompt(id: string): Promise<Prompt | undefined>;
   getPromptsByCreatorRole(role: string): Promise<Prompt[]>;
   getPopularPrompts(limit: number): Promise<Prompt[]>;
+  getDailyPrompts(): Promise<Prompt[]>;
   createPrompt(prompt: InsertPrompt): Promise<Prompt>;
   
   // Submission methods
-  getSubmission(id: number): Promise<Submission | undefined>;
-  getSubmissionsByPromptId(promptId: number): Promise<Submission[]>;
+  getSubmission(id: string): Promise<Submission | undefined>;
+  getSubmissionsByPromptId(promptId: string): Promise<Submission[]>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
   
   // Comment methods
-  getCommentsBySubmissionId(submissionId: number): Promise<Comment[]>;
+  getCommentsBySubmissionId(submissionId: string): Promise<Comment[]>;
   createComment(comment: InsertComment): Promise<Comment>;
   
   // Like methods
-  getLike(userId: number, submissionId: number): Promise<Like | undefined>;
+  getLike(userId: string, submissionId: string): Promise<Like | undefined>;
   createLike(like: InsertLike): Promise<Like>;
-  deleteLike(userId: number, submissionId: number): Promise<void>;
+  deleteLike(userId: string, submissionId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
   // User methods
-  async getUser(id: number): Promise<User | undefined> {
+  async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
@@ -62,12 +63,20 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Prompt methods
-  async getPrompt(id: number): Promise<Prompt | undefined> {
+  async getPrompt(id: string): Promise<Prompt | undefined> {
     const [prompt] = await db
       .select()
       .from(prompts)
       .where(eq(prompts.id, id));
     return prompt;
+  }
+  
+  async getDailyPrompts(): Promise<Prompt[]> {
+    return await db
+      .select()
+      .from(prompts)
+      .where(eq(prompts.isDaily, true))
+      .orderBy(desc(prompts.createdAt));
   }
   
   async getPromptsByCreatorRole(role: string): Promise<Prompt[]> {
@@ -108,7 +117,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Submission methods
-  async getSubmission(id: number): Promise<Submission | undefined> {
+  async getSubmission(id: string): Promise<Submission | undefined> {
     const [submission] = await db
       .select()
       .from(submissions)
@@ -116,7 +125,7 @@ export class DatabaseStorage implements IStorage {
     return submission;
   }
   
-  async getSubmissionsByPromptId(promptId: number): Promise<Submission[]> {
+  async getSubmissionsByPromptId(promptId: string): Promise<Submission[]> {
     return await db
       .select()
       .from(submissions)
@@ -140,7 +149,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Comment methods
-  async getCommentsBySubmissionId(submissionId: number): Promise<Comment[]> {
+  async getCommentsBySubmissionId(submissionId: string): Promise<Comment[]> {
     return await db
       .select()
       .from(comments)
@@ -166,7 +175,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Like methods
-  async getLike(userId: number, submissionId: number): Promise<Like | undefined> {
+  async getLike(userId: string, submissionId: string): Promise<Like | undefined> {
     if (!userId) {
       return undefined;
     }
@@ -200,7 +209,7 @@ export class DatabaseStorage implements IStorage {
     return like;
   }
   
-  async deleteLike(userId: number, submissionId: number): Promise<void> {
+  async deleteLike(userId: string, submissionId: string): Promise<void> {
     if (!userId) {
       return;
     }

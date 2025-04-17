@@ -53,9 +53,9 @@ export const likes = pgTable("likes", {
 
 // Comments table
 export const comments = pgTable("comments", {
-  id: serial("id").primaryKey(),
-  submissionId: integer("submission_id").references(() => submissions.id).notNull(),
-  userId: integer("user_id").references(() => users.id),
+  id: uuid("id").defaultRandom().primaryKey(),
+  submissionId: uuid("submission_id").references(() => submissions.id).notNull(),
+  userId: uuid("user_id").references(() => users.id),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
