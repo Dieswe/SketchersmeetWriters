@@ -77,7 +77,9 @@ export const insertSubmissionSchema = createInsertSchema(submissions).pick({
   userId: true,
   type: true,
   content: true,
-});
+})
+  // fallback voor anonieme uploads
+  .partial({ userId: true });
 
 export const insertCommentSchema = createInsertSchema(comments).pick({
   submissionId: true, 

@@ -24,7 +24,8 @@ export default function UploadModal({ prompt, onClose, onSubmit }: UploadModalPr
 
   if (!prompt) return null;
 
-  const isWriterUpload = prompt.creatorRole === UserRole.Sketcher;
+  // Gebruik naam vanuit gebruikerflow: tekenen bij een tekstprompt
+  const isUploadingDrawing = prompt.type === 'text';
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -37,14 +38,12 @@ export default function UploadModal({ prompt, onClose, onSubmit }: UploadModalPr
     }
   };
 
-  const handleChooseFile = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+  function handleChooseFile() {
+    fileInputRef.current?.click();  // veilig null-check
   };
 
   const handleSubmit = async () => {
-    if (isWriterUpload && !storyText.trim()) {
+    if (!isUploadingDrawing && !storyText.trim()) {
       toast({
         title: "Fout",
         description: "Je moet een verhaal schrijven voordat je kunt uploaden.",
@@ -53,7 +52,7 @@ export default function UploadModal({ prompt, onClose, onSubmit }: UploadModalPr
       return;
     }
 
-    if (!isWriterUpload && !previewUrl) {
+    if (isUploadingDrawing && !previewUrl) {
       toast({
         title: "Fout",
         description: "Je moet een afbeelding uploaden voordat je kunt doorgaan.",
@@ -69,8 +68,13 @@ export default function UploadModal({ prompt, onClose, onSubmit }: UploadModalPr
       // For now, we'll simulate a delay
       const submissionData = {
         promptId: prompt.id,
-        content: isWriterUpload ? storyText : previewUrl,
-        type: isWriterUpload ? 'text' : 'image',
+        userId: null,            // anonieme inzending
+        type: isUploadingDrawing
+          ? 'image'              // tekenupload
+          : 'text',              // tekstupload
+        content: isUploadingDrawing
+          ? previewUrl
+          : storyText
       };
       
       await apiRequest('POST', '/api/submissions', submissionData);
@@ -102,7 +106,7 @@ export default function UploadModal({ prompt, onClose, onSubmit }: UploadModalPr
           </DialogTitle>
         </DialogHeader>
 
-        {isWriterUpload ? (
+        {!isUploadingDrawing ? (
           <div>
             <Label htmlFor="story-text" className="block text-sm font-medium mb-2">
               Jouw verhaal
