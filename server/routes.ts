@@ -3,10 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertSubmissionSchema, insertLikeSchema, insertCommentSchema } from "@shared/schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
-import { MOCK_WRITER_PROMPTS, MOCK_SKETCHER_PROMPTS, MOCK_COLLABORATIONS, MOCK_POPULAR_PROMPTS, MOCK_SUBMISSIONS } from "../client/src/lib/constants";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const router = express.Router();
@@ -20,79 +18,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Format prompt for API response
-  const formatPrompt = async (prompt: any) => {
-    const creator = await storage.getUser(prompt.creatorId);
+  const formatPrompt = (prompt: any) => {
     return {
-      id: prompt.id.toString(),
+      id: prompt.id,
       creator: {
-        id: creator?.id.toString() || "",
-        name: creator?.name || "",
-        avatar: creator?.avatar || "",
+        id: "user-" + prompt.author,
+        name: prompt.author === "anon" ? "Anoniem" : prompt.author,
+        avatar: "",
       },
-      creatorRole: prompt.creatorRole,
+      creatorRole: prompt.type === "text" ? "writer" : "sketcher",
       type: prompt.type,
       content: prompt.content,
-      isActive: prompt.isActive,
-      contributionsCount: (await storage.getSubmissionsByPromptId(prompt.id)).length,
-      commentsCount: prompt.comments,
-      likes: prompt.likes,
-      comments: prompt.comments,
+      isActive: prompt.isActive || false,
+      contributionsCount: prompt.contributionsCount || 0,
+      commentsCount: prompt.commentsCount || 0,
+      likes: 0,
+      comments: prompt.commentsCount || 0,
     };
   };
 
   // Format submission for API response
-  const formatSubmission = async (submission: any, userId?: number) => {
-    const creator = submission.userId ? await storage.getUser(submission.userId) : null;
+  const formatSubmission = async (submission: any, userId?: string) => {
     const isLiked = userId && await storage.getLike(userId, submission.id) !== undefined;
     
     return {
-      id: submission.id.toString(),
-      promptId: submission.promptId.toString(),
+      id: submission.id,
+      promptId: submission.promptId,
       creator: {
-        id: creator?.id.toString() || "anonymous",
-        name: creator?.name || "Anonymous",
-        avatar: creator?.avatar || "",
+        id: "user-" + submission.author,
+        name: submission.author === "anon" ? "Anoniem" : submission.author,
+        avatar: "",
       },
       type: submission.type,
       content: submission.content,
-      likes: submission.likes,
-      comments: submission.comments,
+      likes: submission.likes || 0,
+      comments: submission.comments || 0,
       isLiked: isLiked || false,
       timeAgo: formatTimeAgo(submission.createdAt),
     };
   };
 
-  // GET writer prompts
+  // GET prompts by type
   router.get("/prompts", async (req: Request, res: Response) => {
     try {
-      // Use mock data for now
-      if (req.query.role === "writer") {
-        res.json(MOCK_SKETCHER_PROMPTS);
-      } else {
-        res.json(MOCK_WRITER_PROMPTS);
+      const type = req.query.type as string;
+      if (!type || (type !== "text" && type !== "image")) {
+        return res.status(400).json({ message: "Type parameter must be 'text' or 'image'" });
       }
       
-      // For a real implementation:
-      // const role = req.query.role as string;
-      // const prompts = await storage.getPromptsByCreatorRole(role);
-      // const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
-      // res.json(formattedPrompts);
+      const prompts = await storage.getPromptsByType(type);
+      const formattedPrompts = prompts.map(formatPrompt);
+      res.json(formattedPrompts);
     } catch (error) {
       console.error("Error fetching prompts:", error);
       res.status(500).json({ message: "Error fetching prompts" });
     }
   });
 
+  // GET daily prompt
+  router.get("/prompts/daily", async (req: Request, res: Response) => {
+    try {
+      const dailyPrompt = await storage.getDailyPrompt();
+      if (!dailyPrompt) {
+        return res.json(null);
+      }
+      res.json(formatPrompt(dailyPrompt));
+    } catch (error) {
+      console.error("Error fetching daily prompt:", error);
+      res.status(500).json({ message: "Error fetching daily prompt" });
+    }
+  });
+
   // GET popular prompts
   router.get("/prompts/popular", async (req: Request, res: Response) => {
     try {
-      // Use mock data for now
-      res.json(MOCK_POPULAR_PROMPTS);
-      
-      // For a real implementation:
-      // const prompts = await storage.getPopularPrompts(6);
-      // const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
-      // res.json(formattedPrompts);
+      const prompts = await storage.getPopularPrompts(6);
+      const formattedPrompts = prompts.map(formatPrompt);
+      res.json(formattedPrompts);
     } catch (error) {
       console.error("Error fetching popular prompts:", error);
       res.status(500).json({ message: "Error fetching popular prompts" });
@@ -102,23 +104,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET single prompt
   router.get("/prompts/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
+      const prompt = await storage.getPrompt(id);
       
-      // Use mock data for now
-      const mockPrompt = [...MOCK_WRITER_PROMPTS, ...MOCK_SKETCHER_PROMPTS].find(p => p.id === req.params.id);
-      if (mockPrompt) {
-        res.json(mockPrompt);
-      } else {
-        res.status(404).json({ message: "Prompt not found" });
+      if (!prompt) {
+        return res.status(404).json({ message: "Prompt not found" });
       }
       
-      // For a real implementation:
-      // const prompt = await storage.getPrompt(id);
-      // if (!prompt) {
-      //   return res.status(404).json({ message: "Prompt not found" });
-      // }
-      // const formattedPrompt = await formatPrompt(prompt);
-      // res.json(formattedPrompt);
+      res.json(formatPrompt(prompt));
     } catch (error) {
       console.error("Error fetching prompt:", error);
       res.status(500).json({ message: "Error fetching prompt" });
@@ -128,32 +121,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET submissions for a prompt
   router.get("/prompts/:id/submissions", async (req: Request, res: Response) => {
     try {
-      const promptId = parseInt(req.params.id);
+      const promptId = req.params.id;
+      const submissions = await storage.getSubmissionsByPromptId(promptId);
       
-      // Use mock data for now
-      res.json(MOCK_SUBMISSIONS);
+      // Gebruik "anon" als gebruikers-ID voor anonieme gebruikers
+      const userId = "anon";
       
-      // For a real implementation:
-      // const submissions = await storage.getSubmissionsByPromptId(promptId);
-      // const userId = req.session?.userId; // If using sessions
-      // const formattedSubmissions = await Promise.all(
-      //   submissions.map(sub => formatSubmission(sub, userId))
-      // );
-      // res.json(formattedSubmissions);
+      const formattedSubmissions = await Promise.all(
+        submissions.map(sub => formatSubmission(sub, userId))
+      );
+      
+      res.json(formattedSubmissions);
     } catch (error) {
       console.error("Error fetching submissions:", error);
       res.status(500).json({ message: "Error fetching submissions" });
     }
   });
 
-  // GET collaborations
+  // Voorlopig behouden we deze route met mock data
   router.get("/collaborations", async (req: Request, res: Response) => {
     try {
-      // Use mock data for now
-      res.json(MOCK_COLLABORATIONS);
+      // Simuleer collaborations door tekst en afbeelding te combineren
+      const textSubmissions = await storage.getSubmissionsByType("text");
+      const imageSubmissions = await storage.getSubmissionsByType("image");
       
-      // For a real implementation, this would fetch real collaborations
-      // from storage and format them appropriately
+      // Combineer ze tot collaborations (maximaal 5)
+      const collaborations = [];
+      const maxCount = Math.min(5, Math.min(textSubmissions.length, imageSubmissions.length));
+      
+      for (let i = 0; i < maxCount; i++) {
+        collaborations.push({
+          id: `collab-${i}`,
+          promptId: textSubmissions[i].promptId, 
+          image: imageSubmissions[i].content,
+          imageAlt: "Afbeelding voor collaboratie",
+          text: textSubmissions[i].content,
+          collaborators: [
+            {
+              id: `user-${textSubmissions[i].author}`,
+              name: textSubmissions[i].author === "anon" ? "Anoniem" : textSubmissions[i].author,
+              avatar: ""
+            },
+            {
+              id: `user-${imageSubmissions[i].author}`,
+              name: imageSubmissions[i].author === "anon" ? "Anoniem" : imageSubmissions[i].author,
+              avatar: ""
+            }
+          ]
+        });
+      }
+      
+      res.json(collaborations);
     } catch (error) {
       console.error("Error fetching collaborations:", error);
       res.status(500).json({ message: "Error fetching collaborations" });
@@ -182,9 +200,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST like submission
   router.post("/submissions/:id/like", async (req: Request, res: Response) => {
     try {
-      const submissionId = parseInt(req.params.id);
-      const userId = 1; // For now, use a fixed user ID (guest user)
-      // const userId = req.session?.userId; // If using sessions
+      const submissionId = req.params.id;
+      const userId = req.body.userId || "anon"; // Gebruik "anon" als er geen gebruikers-ID is
       
       const submission = await storage.getSubmission(submissionId);
       if (!submission) {
@@ -207,23 +224,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST comment on submission
-  router.post("/submissions/:id/comments", async (req: Request, res: Response) => {
+  // POST comment on content (prompt or submission)
+  router.post("/content/:type/:id/comment", async (req: Request, res: Response) => {
     try {
-      const submissionId = parseInt(req.params.id);
-      const userId = 1; // For now, use a fixed user ID (guest user)
-      // const userId = req.session?.userId; // If using sessions
+      const contentType = req.params.type; // "prompt" of "submission"
+      const contentId = req.params.id;
+      const userId = req.body.userId || "anon"; // Gebruik "anon" als er geen gebruikers-ID is
+      
+      if (contentType !== "prompt" && contentType !== "submission") {
+        return res.status(400).json({ message: "Type must be 'prompt' or 'submission'" });
+      }
       
       const validatedData = insertCommentSchema.parse({
-        submissionId,
+        contentType,
+        contentId,
         userId,
-        content: req.body.content
+        text: req.body.text
       });
       
       const comment = await storage.createComment(validatedData);
       res.status(201).json({
         id: comment.id,
-        content: comment.content,
+        userId: comment.userId,
+        text: comment.text,
         createdAt: comment.createdAt,
         timeAgo: formatTimeAgo(comment.createdAt)
       });

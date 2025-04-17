@@ -1,101 +1,80 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users table
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  name: text("name").notNull(),
-  avatar: text("avatar"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 // Prompts table
 export const prompts = pgTable("prompts", {
-  id: serial("id").primaryKey(),
-  creatorId: integer("creator_id").references(() => users.id).notNull(),
-  creatorRole: text("creator_role").notNull(), // "writer" or "sketcher"
+  id: uuid("id").primaryKey().defaultRandom(),
   type: text("type").notNull(), // "text" or "image"
   content: text("content").notNull(),
+  author: text("author").default("anon"), // Optioneel, kan 'anon' of gebruikers-id zijn
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Extra eigenschappen voor de UI
   isActive: boolean("is_active").default(false),
   isDaily: boolean("is_daily").default(false),
-  likes: integer("likes").default(0),
-  comments: integer("comments").default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  contributionsCount: integer("contributions_count").default(0),
+  commentsCount: integer("comments_count").default(0),
 });
 
 // Submissions table
 export const submissions = pgTable("submissions", {
-  id: serial("id").primaryKey(),
-  promptId: integer("prompt_id").references(() => prompts.id).notNull(),
-  userId: integer("user_id").references(() => users.id),
+  id: uuid("id").primaryKey().defaultRandom(),
+  promptId: uuid("prompt_id").references(() => prompts.id).notNull(),
   type: text("type").notNull(), // "text" or "image"
   content: text("content").notNull(),
+  author: text("author").default("anon"), // Optioneel, kan 'anon' of gebruikers-id zijn
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   likes: integer("likes").default(0),
   comments: integer("comments").default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Likes table to track which submissions users have liked
+// Likes table to track likes on submissions
 export const likes = pgTable("likes", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
-  submissionId: integer("submission_id").references(() => submissions.id),
+  id: uuid("id").primaryKey().defaultRandom(),
+  submissionId: uuid("submission_id").references(() => submissions.id).notNull(),
+  userId: text("user_id").default("anon"), // Optioneel voor anonieme likes
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Comments table
+// Comments table for both prompts and submissions
 export const comments = pgTable("comments", {
-  id: serial("id").primaryKey(),
-  submissionId: integer("submission_id").references(() => submissions.id).notNull(),
-  userId: integer("user_id").references(() => users.id),
-  content: text("content").notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  contentType: text("content_type").notNull(), // "prompt" of "submission"
+  contentId: uuid("content_id").notNull(), // ID van de prompt of submission
+  userId: text("user_id").default("anon"), // Optioneel, kan anoniem zijn
+  text: text("text").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Zod schemas for validation
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  name: true,
-  avatar: true,
-});
-
 export const insertPromptSchema = createInsertSchema(prompts).pick({
-  creatorId: true,
-  creatorRole: true,
   type: true,
   content: true,
+  author: true,
   isActive: true,
   isDaily: true,
-});
+}).partial({ author: true, isActive: true, isDaily: true });
 
 export const insertSubmissionSchema = createInsertSchema(submissions).pick({
   promptId: true,
-  userId: true,
   type: true,
   content: true,
-})
-  // fallback voor anonieme uploads
-  .partial({ userId: true });
+  author: true,
+}).partial({ author: true });
 
 export const insertCommentSchema = createInsertSchema(comments).pick({
-  submissionId: true, 
+  contentType: true,
+  contentId: true,
   userId: true,
-  content: true,
-});
+  text: true,
+}).partial({ userId: true });
 
 export const insertLikeSchema = createInsertSchema(likes).pick({
-  userId: true,
   submissionId: true,
-});
+  userId: true,
+}).partial({ userId: true });
 
 // Types
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
-
 export type Prompt = typeof prompts.$inferSelect;
 export type InsertPrompt = z.infer<typeof insertPromptSchema>;
 
