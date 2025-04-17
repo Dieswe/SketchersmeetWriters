@@ -67,19 +67,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   router.get("/prompts", async (req: Request, res: Response) => {
     try {
       if (!req.query.role) {
-        return res.status(400).json({ message: "Type parameter must be 'writer' or 'sketcher'" });
+        return res.status(400).json({ message: "Role parameter must be 'writer' or 'sketcher'" });
       }
       
       const role = req.query.role as string;
       
       // Validate role parameter
       if (role !== 'writer' && role !== 'sketcher') {
-        return res.status(400).json({ message: "Type parameter must be 'writer' or 'sketcher'" });
+        return res.status(400).json({ message: "Role parameter must be 'writer' or 'sketcher'" });
       }
       
       // Get prompts from database based on role
       const prompts = await storage.getPromptsByCreatorRole(role);
       const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
+      
+      // Add logging for debugging
+      console.log(`Retrieved ${prompts.length} prompts for role: ${role}`);
+      
       res.json(formattedPrompts);
     } catch (error) {
       console.error("Error fetching prompts:", error);
@@ -93,6 +97,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the 6 most popular prompts from database
       const prompts = await storage.getPopularPrompts(6);
       const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
+      
+      // Add logging for debugging
+      console.log(`Retrieved ${prompts.length} popular prompts`);
+      
       res.json(formattedPrompts);
     } catch (error) {
       console.error("Error fetching popular prompts:", error);
@@ -106,6 +114,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all daily prompts from database
       const prompts = await storage.getDailyPrompts();
       const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
+      
+      // Add logging for debugging
+      console.log(`Retrieved ${prompts.length} daily prompts`);
+      
       res.json(formattedPrompts);
     } catch (error) {
       console.error("Error fetching daily prompts:", error);
@@ -146,6 +158,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const formattedSubmissions = await Promise.all(
         submissions.map(sub => formatSubmission(sub, userId))
       );
+      
+      // Add logging for debugging
+      console.log(`Retrieved ${submissions.length} submissions for prompt ID: ${promptId}`);
       
       res.json(formattedSubmissions);
     } catch (error) {
@@ -206,6 +221,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
+      
+      // Add logging for debugging
+      console.log(`Found ${collaborations.length} collaborations from ${textPrompts.length} text prompts`);
       
       // If no collaborations found, return empty array
       res.json(collaborations.length > 0 ? collaborations : MOCK_COLLABORATIONS);

@@ -204,7 +204,7 @@ export class DatabaseStorage implements IStorage {
       .set({
         likes: sql`COALESCE(${submissions.likes}, 0) + 1`,
       })
-      .where(eq(submissions.id, insertLike.submissionId));
+      .where(sql`${submissions.id} = ${insertLike.submissionId}`);
     
     return like;
   }
@@ -229,7 +229,7 @@ export class DatabaseStorage implements IStorage {
       .set({
         likes: sql`GREATEST(COALESCE(${submissions.likes}, 0) - 1, 0)`,
       })
-      .where(eq(submissions.id, submissionId));
+      .where(sql`${submissions.id} = ${submissionId}`);
   }
   
   // Initialize the database with sample data if needed
