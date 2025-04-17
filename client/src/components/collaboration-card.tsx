@@ -27,7 +27,7 @@ export default function CollaborationCard({ collaboration }: CollaborationCardPr
             <div className="flex flex-col sm:flex-row h-full">
               <div className="w-full sm:w-1/2">
                 <img 
-                  src={collaboration.image} 
+                  src={collaboration.image.startsWith('http') ? collaboration.image : `https://images.unsplash.com/photo-1618331835717-801e976710b2`} 
                   alt={collaboration.imageAlt || "Illustratie"}
                   className="w-full h-48 object-cover rounded-lg" 
                 />

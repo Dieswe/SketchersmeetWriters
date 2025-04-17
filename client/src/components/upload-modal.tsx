@@ -67,13 +67,13 @@ export default function UploadModal({ prompt, onClose, onSubmit }: UploadModalPr
       // In a real application, we would upload the file to a server here
       // For now, we'll simulate a delay
       const submissionData = {
-        promptId: prompt.id,
-        userId: null,            // anonieme inzending
+        promptId: parseInt(prompt.id),  // ID als nummer doorgeven
+        userId: 1,                      // Gebruiker 1 (test gebruiker)
         type: isUploadingDrawing
-          ? 'image'              // tekenupload
-          : 'text',              // tekstupload
+          ? 'image'                     // tekenupload
+          : 'text',                     // tekstupload
         content: isUploadingDrawing
-          ? previewUrl
+          ? previewUrl || ""            // Fallback naar lege string
           : storyText
       };
       

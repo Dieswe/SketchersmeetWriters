@@ -18,7 +18,7 @@ export default function ImagePromptCard({ prompt, isDaily, onUploadClick }: Imag
       buttonClassName="bg-[#4B7BF5] text-white"
     >
       <img 
-        src={prompt.content}
+        src={prompt.content.startsWith('http') ? prompt.content : `https://images.unsplash.com/photo-1618331835717-801e976710b2`}
         alt="Tekening prompt" 
         className="w-full h-48 object-cover"
       />
