@@ -41,9 +41,21 @@ export default function PromptCard({
     >
       {isDaily && (
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-          <Badge variant="secondary">Daily</Badge>
+          <Badge variant="secondary" className="bg-[#FFC73B] text-black">Vandaag</Badge>
         </div>
       )}
+      <div className="absolute top-2 right-2 z-10">
+        <Badge 
+          variant="outline" 
+          className={`${prompt.type === 'text' ? 'bg-[#4B7BF5]/10' : 'bg-[#FF8A5B]/10'} text-xs`}
+        >
+          {prompt.type === 'text' ? (
+            <><i className="fas fa-pen mr-1"></i> Tekst</>
+          ) : (
+            <><i className="fas fa-paint-brush mr-1"></i> Beeld</>
+          )}
+        </Badge>
+      </div>
       <Link to={`/submissions/${prompt.id}`}>
         <Card
           className="h-full shadow-md cursor-pointer overflow-hidden min-w-[250px] flex-shrink-0"
@@ -66,12 +78,6 @@ export default function PromptCard({
               <span className="font-medium">{prompt.creator.name}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div 
-                className="w-6 h-6 flex items-center justify-center rounded-full bg-background/10"
-                title={prompt.type === 'text' ? "Tekst prompt" : "Afbeelding prompt"}
-              >
-                <i className={prompt.type === 'text' ? "fas fa-pen text-xs" : "fas fa-paint-brush text-xs"} aria-hidden="true"></i>
-              </div>
               {prompt.isActive && (
                 <div 
                   className="w-2 h-2 rounded-full bg-[#4CAF50] animate-pulse"
