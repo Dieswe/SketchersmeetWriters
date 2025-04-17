@@ -50,8 +50,14 @@ export default function Submissions() {
 
   if (!prompt) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#10998A" }}>
-        <div className="text-white">Prompt niet gevonden</div>
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ backgroundColor: "#10998A" }}>
+        <div className="text-white text-xl mb-4">Prompt niet gevonden</div>
+        <Link href="/">
+          <Button variant="outline" className="text-white border-white hover:bg-white/10">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Terug naar startpagina
+          </Button>
+        </Link>
       </div>
     );
   }
