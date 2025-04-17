@@ -1,11 +1,12 @@
 import express, { type Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertSubmissionSchema, insertLikeSchema, insertCommentSchema } from "@shared/schema";
+import { db } from "./db";
+import { prompts, submissions, insertSubmissionSchema, insertLikeSchema, insertCommentSchema } from "@shared/schema";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
+import { eq, and } from "drizzle-orm";
 import { MOCK_WRITER_PROMPTS, MOCK_SKETCHER_PROMPTS, MOCK_COLLABORATIONS, MOCK_POPULAR_PROMPTS, MOCK_SUBMISSIONS } from "../client/src/lib/constants";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -89,13 +90,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET popular prompts
   router.get("/prompts/popular", async (req: Request, res: Response) => {
     try {
-      // Use mock data for now
-      res.json(MOCK_POPULAR_PROMPTS);
-      
-      // For a real implementation:
-      // const prompts = await storage.getPopularPrompts(6);
-      // const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
-      // res.json(formattedPrompts);
+      // Get the 6 most popular prompts from database
+      const prompts = await storage.getPopularPrompts(6);
+      const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
+      res.json(formattedPrompts);
     } catch (error) {
       console.error("Error fetching popular prompts:", error);
       res.status(500).json({ message: "Error fetching popular prompts" });
@@ -106,22 +104,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   router.get("/prompts/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      
-      // Use mock data for now
-      const mockPrompt = [...MOCK_WRITER_PROMPTS, ...MOCK_SKETCHER_PROMPTS].find(p => p.id === req.params.id);
-      if (mockPrompt) {
-        res.json(mockPrompt);
-      } else {
-        res.status(404).json({ message: "Prompt not found" });
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid prompt ID" });
       }
       
-      // For a real implementation:
-      // const prompt = await storage.getPrompt(id);
-      // if (!prompt) {
-      //   return res.status(404).json({ message: "Prompt not found" });
-      // }
-      // const formattedPrompt = await formatPrompt(prompt);
-      // res.json(formattedPrompt);
+      const prompt = await storage.getPrompt(id);
+      if (!prompt) {
+        return res.status(404).json({ message: "Prompt not found" });
+      }
+      
+      const formattedPrompt = await formatPrompt(prompt);
+      res.json(formattedPrompt);
     } catch (error) {
       console.error("Error fetching prompt:", error);
       res.status(500).json({ message: "Error fetching prompt" });
@@ -132,17 +125,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   router.get("/prompts/:id/submissions", async (req: Request, res: Response) => {
     try {
       const promptId = parseInt(req.params.id);
+      if (isNaN(promptId)) {
+        return res.status(400).json({ message: "Invalid prompt ID" });
+      }
       
-      // Use mock data for now
-      res.json(MOCK_SUBMISSIONS);
+      const prompt = await storage.getPrompt(promptId);
+      if (!prompt) {
+        return res.status(404).json({ message: "Prompt not found" });
+      }
       
-      // For a real implementation:
-      // const submissions = await storage.getSubmissionsByPromptId(promptId);
-      // const userId = req.session?.userId; // If using sessions
-      // const formattedSubmissions = await Promise.all(
-      //   submissions.map(sub => formatSubmission(sub, userId))
-      // );
-      // res.json(formattedSubmissions);
+      const submissions = await storage.getSubmissionsByPromptId(promptId);
+      const userId = 1; // Mock user ID for now
+      const formattedSubmissions = await Promise.all(
+        submissions.map(sub => formatSubmission(sub, userId))
+      );
+      
+      res.json(formattedSubmissions);
     } catch (error) {
       console.error("Error fetching submissions:", error);
       res.status(500).json({ message: "Error fetching submissions" });
@@ -152,11 +150,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET collaborations
   router.get("/collaborations", async (req: Request, res: Response) => {
     try {
-      // Use mock data for now
-      res.json(MOCK_COLLABORATIONS);
+      // Get all text prompts with image submissions and vice versa to form collaborations
+      const textPrompts = await db
+        .select()
+        .from(prompts)
+        .where(eq(prompts.type, 'text'))
+        .limit(5);
       
-      // For a real implementation, this would fetch real collaborations
-      // from storage and format them appropriately
+      const collaborations = [];
+      
+      // For each text prompt, find an image submission if available
+      for (const prompt of textPrompts) {
+        const [imageSubmission] = await db
+          .select()
+          .from(submissions)
+          .where(
+            and(
+              eq(submissions.type, 'image'),
+              eq(submissions.promptId, prompt.id)
+            )
+          )
+          .limit(1);
+          
+        if (imageSubmission) {
+          const promptCreator = await storage.getUser(prompt.creatorId);
+          const submissionCreator = imageSubmission.userId 
+            ? await storage.getUser(imageSubmission.userId)
+            : null;
+            
+          collaborations.push({
+            id: `collab-${prompt.id}-${imageSubmission.id}`,
+            promptId: prompt.id.toString(),
+            image: imageSubmission.content,
+            imageAlt: "Afbeelding door gebruiker",
+            text: prompt.content,
+            collaborators: [
+              promptCreator ? {
+                id: promptCreator.id.toString(),
+                name: promptCreator.name,
+                avatar: promptCreator.avatar
+              } : { id: "anonymous", name: "Anoniem", avatar: "" },
+              submissionCreator ? {
+                id: submissionCreator.id.toString(),
+                name: submissionCreator.name,
+                avatar: submissionCreator.avatar 
+              } : { id: "anonymous", name: "Anoniem", avatar: "" }
+            ]
+          });
+        }
+      }
+      
+      // If no collaborations found, return empty array
+      res.json(collaborations.length > 0 ? collaborations : MOCK_COLLABORATIONS);
     } catch (error) {
       console.error("Error fetching collaborations:", error);
       res.status(500).json({ message: "Error fetching collaborations" });
