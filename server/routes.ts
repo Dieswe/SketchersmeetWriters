@@ -7,7 +7,7 @@ import { z } from "zod";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { eq, and } from "drizzle-orm";
-import { MOCK_WRITER_PROMPTS, MOCK_SKETCHER_PROMPTS, MOCK_COLLABORATIONS, MOCK_POPULAR_PROMPTS, MOCK_SUBMISSIONS } from "../client/src/lib/constants";
+import { sql } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const router = express.Router();
@@ -225,8 +225,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add logging for debugging
       console.log(`Found ${collaborations.length} collaborations from ${textPrompts.length} text prompts`);
       
-      // If no collaborations found, return empty array
-      res.json(collaborations.length > 0 ? collaborations : MOCK_COLLABORATIONS);
+      // Always return actual collaborations, even if empty
+      res.json(collaborations);
     } catch (error) {
       console.error("Error fetching collaborations:", error);
       res.status(500).json({ message: "Error fetching collaborations" });
