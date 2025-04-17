@@ -29,14 +29,17 @@ export default function PromptFeed({ prompts, onUploadClick }: PromptFeedProps) 
     }
   };
 
+  // Log voor debugging
+  console.log("PromptFeed rendering met:", { role, promptsCount: prompts.length });
+
   return (
     <div>
       <div className="mb-4">
-        <h2 className="text-xl font-semibold text-white mb-2">{getHeaderText()}</h2>
+        <h2 className="text-xl font-semibold text-primary-foreground mb-2">{getHeaderText()}</h2>
       </div>
 
       <div
-        className="flex gap-4 pb-4 mb-8 overflow-x-auto snap-x snap-mandatory"
+        className="flex gap-4 pb-4 mb-8 overflow-x-auto snap-x snap-mandatory scrollbar-auto"
         role="list"
         aria-label={
           role === UserRole.Writer
@@ -45,27 +48,31 @@ export default function PromptFeed({ prompts, onUploadClick }: PromptFeedProps) 
         }
         style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(0,0,0,0.2) transparent" }}
       >
-        {prompts.map((prompt, index) => {
-          if (role === UserRole.Writer) {
-            return (
-              <ImagePromptCard
-                key={prompt.id}
-                prompt={prompt}
-                isDaily={index === 0}
-                onUploadClick={() => onUploadClick(prompt)}
-              />
-            );
-          } else {
-            return (
-              <TextPromptCard
-                key={prompt.id}
-                prompt={prompt}
-                isDaily={index === 0}
-                onUploadClick={() => onUploadClick(prompt)}
-              />
-            );
-          }
-        })}
+        {prompts.length > 0 ? (
+          prompts.map((prompt, index) => {
+            if (role === UserRole.Writer) {
+              return (
+                <ImagePromptCard
+                  key={prompt.id}
+                  prompt={prompt}
+                  isDaily={index === 0}
+                  onUploadClick={() => onUploadClick(prompt)}
+                />
+              );
+            } else {
+              return (
+                <TextPromptCard
+                  key={prompt.id}
+                  prompt={prompt}
+                  isDaily={index === 0}
+                  onUploadClick={() => onUploadClick(prompt)}
+                />
+              );
+            }
+          })
+        ) : (
+          <p className="text-muted text-center p-4 w-full">Geen prompts gevonden</p>
+        )}
       </div>
     </div>
   );
