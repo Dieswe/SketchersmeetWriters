@@ -36,7 +36,7 @@ export default function PromptFeed({ prompts, onUploadClick }: PromptFeedProps) 
       </div>
 
       <div
-        className="flex gap-4 pb-4 mb-8 overflow-x-auto"
+        className="flex gap-4 pb-4 mb-8 overflow-x-auto snap-x snap-mandatory"
         role="list"
         aria-label={
           role === UserRole.Writer

@@ -47,7 +47,7 @@ export default function PromptCard({
       )}
       <Link to={`/submissions/${prompt.id}`}>
         <Card
-          className="h-full shadow-md cursor-pointer overflow-hidden"
+          className="h-full shadow-md cursor-pointer overflow-hidden min-w-[250px] flex-shrink-0"
           role="button"
           tabIndex={0}
           onKeyDown={e => { if (e.key === 'Enter') { handleCardClick(); } }}
