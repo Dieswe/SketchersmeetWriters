@@ -67,12 +67,16 @@ export default function PromptCard({
           <CardHeader className="p-3 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
-                {prompt.creator.avatar && (
+                {prompt.creator.avatar ? (
                   <img 
-                    src={prompt.creator.avatar} 
+                    src={prompt.creator.avatar.startsWith('http') ? prompt.creator.avatar : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'} 
                     alt="" 
                     className="w-full h-full object-cover" 
                   />
+                ) : (
+                  <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                    <i className="fas fa-user text-gray-500"></i>
+                  </div>
                 )}
               </div>
               <span className="font-medium">{prompt.creator.name}</span>

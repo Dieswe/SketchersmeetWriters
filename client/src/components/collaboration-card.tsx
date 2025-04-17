@@ -44,12 +44,16 @@ export default function CollaborationCard({ collaboration }: CollaborationCardPr
                           key={index} 
                           className="w-6 h-6 rounded-full border-2 border-white overflow-hidden"
                         >
-                          {collaborator.avatar && (
+                          {collaborator.avatar ? (
                             <img 
-                              src={collaborator.avatar} 
+                              src={collaborator.avatar.startsWith('http') ? collaborator.avatar : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'} 
                               alt="" 
                               className="w-full h-full object-cover" 
                             />
+                          ) : (
+                            <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                              <i className="fas fa-user text-gray-500 text-xs"></i>
+                            </div>
                           )}
                         </div>
                       ))}
