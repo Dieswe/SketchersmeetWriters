@@ -65,18 +65,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET writer prompts
   router.get("/prompts", async (req: Request, res: Response) => {
     try {
-      // Use mock data for now
-      if (req.query.role === "writer") {
-        res.json(MOCK_SKETCHER_PROMPTS);
-      } else {
-        res.json(MOCK_WRITER_PROMPTS);
+      if (!req.query.role) {
+        return res.status(400).json({ message: "Type parameter must be 'writer' or 'sketcher'" });
       }
       
-      // For a real implementation:
-      // const role = req.query.role as string;
-      // const prompts = await storage.getPromptsByCreatorRole(role);
-      // const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
-      // res.json(formattedPrompts);
+      const role = req.query.role as string;
+      
+      // Validate role parameter
+      if (role !== 'writer' && role !== 'sketcher') {
+        return res.status(400).json({ message: "Type parameter must be 'writer' or 'sketcher'" });
+      }
+      
+      // Get prompts from database based on role
+      const prompts = await storage.getPromptsByCreatorRole(role);
+      const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
+      res.json(formattedPrompts);
     } catch (error) {
       console.error("Error fetching prompts:", error);
       res.status(500).json({ message: "Error fetching prompts" });
