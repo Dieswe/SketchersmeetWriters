@@ -24,12 +24,12 @@ export default function PromptCard({
   buttonIcon,
   buttonClassName,
 }: PromptCardProps) {
-  const handleCardClick = useCallback((e: React.MouseEvent) => {
-    // Only navigate if the click was not on a button
-    if (!(e.target as HTMLElement).closest('button')) {
+  const handleCardClick = useCallback((e?: React.KeyboardEvent | React.MouseEvent) => {
+    // Function for keyboard/mouse handlers
+    if (e) {
       e.preventDefault();
-      window.location.href = `/submissions/${prompt.id}`;
     }
+    window.location.href = `/submissions/${prompt.id}`;
   }, [prompt.id]);
 
   return (
@@ -45,57 +45,60 @@ export default function PromptCard({
           Vandaag
         </div>
       )}
-      <Card
-        className="h-full shadow-md cursor-pointer overflow-hidden"
-        role="listitem"
-        tabIndex={0}
-        onClick={handleCardClick}
-      >
-        <CardHeader className="p-3 border-b flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
-              {prompt.creator.avatar && (
-                <img 
-                  src={prompt.creator.avatar} 
-                  alt="" 
-                  className="w-full h-full object-cover" 
-                />
-              )}
+      <Link to={`/submissions/${prompt.id}`}>
+        <Card
+          className="h-full shadow-md cursor-pointer overflow-hidden"
+          role="button"
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter') { handleCardClick(); } }}
+          aria-label="Bekijk inzendingen van deze prompt"
+        >
+          <CardHeader className="p-3 border-b flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
+                {prompt.creator.avatar && (
+                  <img 
+                    src={prompt.creator.avatar} 
+                    alt="" 
+                    className="w-full h-full object-cover" 
+                  />
+                )}
+              </div>
+              <span className="font-medium">{prompt.creator.name}</span>
             </div>
-            <span className="font-medium">{prompt.creator.name}</span>
-          </div>
-          {prompt.isActive && (
-            <div 
-              className="w-2 h-2 rounded-full bg-[#4CAF50] animate-pulse"
-              title="Active now"
-            />
-          )}
-        </CardHeader>
-        
-        <CardContent className="p-0">
-          {children}
-        </CardContent>
-        
-        <CardFooter className="p-4">
-          <div className="w-full">
-            <div className="flex justify-between mb-4 text-sm text-muted">
-              <span>{prompt.contributionsCount} bijdragen</span>
-              <span>{prompt.commentsCount} reacties</span>
+            {prompt.isActive && (
+              <div 
+                className="w-2 h-2 rounded-full bg-[#4CAF50] animate-pulse"
+                title="Active now"
+              />
+            )}
+          </CardHeader>
+          
+          <CardContent className="p-0">
+            {children}
+          </CardContent>
+          
+          <CardFooter className="p-4">
+            <div className="w-full">
+              <div className="flex justify-between mb-4 text-sm text-muted">
+                <span>{prompt.contributionsCount} bijdragen</span>
+                <span>{prompt.commentsCount} reacties</span>
+              </div>
+              <Button 
+                className={`w-full py-2 flex items-center justify-center gap-2 hover:bg-opacity-90 transition ${buttonClassName}`}
+                aria-label={buttonText}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUploadClick();
+                }}
+              >
+                <i className={buttonIcon} aria-hidden="true"></i>
+                <span>{buttonText}</span>
+              </Button>
             </div>
-            <Button 
-              className={`w-full py-2 flex items-center justify-center gap-2 hover:bg-opacity-90 transition ${buttonClassName}`}
-              aria-label={buttonText}
-              onClick={(e) => {
-                e.stopPropagation();
-                onUploadClick();
-              }}
-            >
-              <i className={buttonIcon} aria-hidden="true"></i>
-              <span>{buttonText}</span>
-            </Button>
-          </div>
-        </CardFooter>
-      </Card>
+          </CardFooter>
+        </Card>
+      </Link>
     </motion.div>
   );
 }

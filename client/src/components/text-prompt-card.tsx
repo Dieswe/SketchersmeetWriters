@@ -13,7 +13,7 @@ export default function TextPromptCard({ prompt, isDaily, onUploadClick }: TextP
       prompt={prompt}
       isDaily={isDaily}
       onUploadClick={onUploadClick}
-      buttonText="Upload tekening"
+      buttonText="Upload tekening bij dit verhaal"
       buttonIcon="fas fa-paint-brush"
       buttonClassName="bg-[#FF8A5B] text-white"
     >

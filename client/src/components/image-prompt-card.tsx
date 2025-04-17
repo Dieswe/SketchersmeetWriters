@@ -13,7 +13,7 @@ export default function ImagePromptCard({ prompt, isDaily, onUploadClick }: Imag
       prompt={prompt}
       isDaily={isDaily}
       onUploadClick={onUploadClick}
-      buttonText="Schrijf verhaal"
+      buttonText="Schrijf verhaal bij deze tekening"
       buttonIcon="fas fa-pen"
       buttonClassName="bg-[#4B7BF5] text-white"
     >
