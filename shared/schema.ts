@@ -1,11 +1,11 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, uuid, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Users table
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
@@ -15,8 +15,8 @@ export const users = pgTable("users", {
 
 // Prompts table
 export const prompts = pgTable("prompts", {
-  id: serial("id").primaryKey(),
-  creatorId: integer("creator_id").references(() => users.id).notNull(),
+  id: uuid("id").defaultRandom().primaryKey(),
+  creatorId: uuid("creator_id").references(() => users.id).notNull(),
   creatorRole: text("creator_role").notNull(), // "writer" or "sketcher"
   type: text("type").notNull(), // "text" or "image"
   content: text("content").notNull(),
@@ -29,9 +29,9 @@ export const prompts = pgTable("prompts", {
 
 // Submissions table
 export const submissions = pgTable("submissions", {
-  id: serial("id").primaryKey(),
-  promptId: integer("prompt_id").references(() => prompts.id).notNull(),
-  userId: integer("user_id").references(() => users.id),
+  id: uuid("id").defaultRandom().primaryKey(),
+  promptId: uuid("prompt_id").references(() => prompts.id).notNull(),
+  userId: uuid("user_id").references(() => users.id),
   type: text("type").notNull(), // "text" or "image"
   content: text("content").notNull(),
   likes: integer("likes").default(0),
@@ -41,10 +41,14 @@ export const submissions = pgTable("submissions", {
 
 // Likes table to track which submissions users have liked
 export const likes = pgTable("likes", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
-  submissionId: integer("submission_id").references(() => submissions.id),
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id),
+  submissionId: uuid("submission_id").references(() => submissions.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userSubmissionUnique: uniqueIndex("user_submission_idx").on(table.userId, table.submissionId),
+  };
 });
 
 // Comments table
