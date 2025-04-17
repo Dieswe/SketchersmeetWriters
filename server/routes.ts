@@ -8,7 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { eq, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { isValidUUID, createErrorResponse } from "./utils";
+import { isValidUUID, isValidID, createErrorResponse } from "./utils";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const router = express.Router();
@@ -131,22 +131,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = req.params.id;
       
-      // Validate UUID format
-      if (!isValidUUID(id)) {
+      // Basic ID validation (ensure it's not empty)
+      if (!isValidID(id)) {
         return res.status(400).json(
-          createErrorResponse("Invalid prompt ID format", 400)
+          createErrorResponse("Invalid prompt ID format - ID cannot be empty", 400)
         );
       }
       
-      const prompt = await storage.getPrompt(id);
-      if (!prompt) {
+      // Try to find the prompt by ID (might be UUID or another format)
+      try {
+        const prompt = await storage.getPrompt(id);
+        if (!prompt) {
+          return res.status(404).json(
+            createErrorResponse("Prompt not found", 404)
+          );
+        }
+        
+        // Log successful lookup
+        console.log(`Retrieved prompt with ID: ${id}`);
+        
+        const formattedPrompt = await formatPrompt(prompt);
+        res.json(formattedPrompt);
+      } catch (dbError) {
+        // If there's a database error (likely invalid ID format)
+        console.error("Database error fetching prompt:", dbError);
         return res.status(404).json(
-          createErrorResponse("Prompt not found", 404)
+          createErrorResponse("Prompt not found or invalid ID format", 404)
         );
       }
-      
-      const formattedPrompt = await formatPrompt(prompt);
-      res.json(formattedPrompt);
     } catch (error) {
       console.error("Error fetching prompt:", error);
       res.status(500).json(
@@ -160,30 +172,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const promptId = req.params.id;
       
-      // Validate UUID format
-      if (!isValidUUID(promptId)) {
+      // Basic ID validation (ensure it's not empty)
+      if (!isValidID(promptId)) {
         return res.status(400).json(
-          createErrorResponse("Invalid prompt ID format", 400)
+          createErrorResponse("Invalid prompt ID format - ID cannot be empty", 400)
         );
       }
       
-      const prompt = await storage.getPrompt(promptId);
-      if (!prompt) {
+      try {
+        // Try to find the prompt first
+        const prompt = await storage.getPrompt(promptId);
+        if (!prompt) {
+          return res.status(404).json(
+            createErrorResponse("Prompt not found", 404)
+          );
+        }
+        
+        // If prompt exists, get its submissions
+        const submissions = await storage.getSubmissionsByPromptId(promptId);
+        const userId = "1"; // Mock user ID for now as string
+        const formattedSubmissions = await Promise.all(
+          submissions.map(sub => formatSubmission(sub, userId))
+        );
+        
+        // Add logging for debugging
+        console.log(`Retrieved ${submissions.length} submissions for prompt ID: ${promptId}`);
+        
+        res.json(formattedSubmissions);
+      } catch (dbError) {
+        // If there's a database error (likely invalid ID format)
+        console.error("Database error fetching prompt or submissions:", dbError);
         return res.status(404).json(
-          createErrorResponse("Prompt not found", 404)
+          createErrorResponse("Prompt not found or invalid ID format", 404)
         );
       }
-      
-      const submissions = await storage.getSubmissionsByPromptId(promptId);
-      const userId = "1"; // Mock user ID for now as string
-      const formattedSubmissions = await Promise.all(
-        submissions.map(sub => formatSubmission(sub, userId))
-      );
-      
-      // Add logging for debugging
-      console.log(`Retrieved ${submissions.length} submissions for prompt ID: ${promptId}`);
-      
-      res.json(formattedSubmissions);
     } catch (error) {
       console.error("Error fetching submissions:", error);
       res.status(500).json(

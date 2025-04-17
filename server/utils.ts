@@ -4,6 +4,12 @@ export function isValidUUID(id: string): boolean {
   return uuidRegex.test(id);
 }
 
+// Less strict ID validation - for frontend compatibility
+export function isValidID(id: string): boolean {
+  // Accept any non-empty string for compatibility with frontend
+  return typeof id === 'string' && id.length > 0;
+}
+
 // Try to parse ID as UUID or fallback to empty string if invalid
 export function safeParseUUID(id: any): string {
   if (typeof id === 'string' && isValidUUID(id)) {
