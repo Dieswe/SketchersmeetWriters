@@ -25,7 +25,7 @@ export default function Home() {
   const { data: prompts = [] } = useQuery<Prompt[]>({
     queryKey: ['/api/prompts', roleType],
     queryFn: async () => {
-      const response = await fetch(`/api/prompts?type=${roleType}`);
+      const response = await fetch(`/api/prompts?role=${roleType}`);
       if (!response.ok) {
         throw new Error('Fout bij het ophalen van prompts');
       }
@@ -36,8 +36,12 @@ export default function Home() {
   
   // Invalidate en refetch wanneer de rol verandert
   useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ['/api/prompts'] });
-  }, [role]);
+    if (role) {
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/prompts', roleType] 
+      });
+    }
+  }, [role, roleType]);
 
   const { data: collaborations = [] } = useQuery<Collaboration[]>({
     queryKey: ['/api/collaborations'],
