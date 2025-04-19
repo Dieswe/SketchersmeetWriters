@@ -31,3 +31,25 @@ Ontbrekende server-side validatie voor bestandsuploads vormde een ernstig risico
 - ✅ Ongeldige bestandstypen worden correct geweigerd
 - ✅ Bestandspaden worden correct opgeslagen en weergegeven
 - ✅ Bestanden zijn toegankelijk via de `/uploads` route
+
+### 2. Geen Helmet, CORS of Rate-Limiting (CRITICAL)
+**Status: ✅ FIXED (2025-04-19)**
+
+**Probleem:**  
+Ontbrekende HTTP beveiligingsheaders en rate-limiting op de API endpoints maakten de applicatie kwetsbaar voor verschillende aanvallen, waaronder XSS en DDoS.
+
+**Implementatie details:**
+- Helmet middleware geïmplementeerd voor veilige HTTP headers
+- Aangepaste Content Security Policy (CSP) toegevoegd voor afbeeldingen
+- CORS middleware geïmplementeerd om cross-origin verzoeken te beheren
+- Rate-limiting ingesteld op 100 verzoeken per minuut per IP-adres
+- Gepersonaliseerde foutberichten voor rate-limiting in het Nederlands
+
+**Gewijzigde bestanden:**
+- `server/index.ts`: Alle beveiligingsmiddleware toegevoegd
+
+**Test resultaten:**
+- ✅ Server stuurt nu beveiligingsheaders mee (Helmet)
+- ✅ CORS-headers worden correct ingesteld
+- ✅ Rate-limiting activeert bij te veel verzoeken
+- ✅ Applicatie blijft normaal functioneren met de nieuwe beveiligingsmaatregelen

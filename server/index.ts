@@ -2,8 +2,33 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
 
 const app = express();
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "img-src": ["'self'", "data:", "blob:"],
+    },
+  }
+}));
+app.use(cors());
+
+// Rate limiting: 100 requests per minute per IP
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: "Te veel verzoeken van dit IP-adres, probeer het later opnieuw."
+});
+app.use("/api", apiLimiter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
