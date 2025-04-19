@@ -1,6 +1,6 @@
 import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage as dataStorage } from "./storage";
 import { db } from "./db";
 import { prompts, submissions, insertSubmissionSchema, insertLikeSchema, insertCommentSchema } from "@shared/schema";
 import { z } from "zod";
@@ -9,9 +9,48 @@ import { nl } from "date-fns/locale";
 import { eq, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { isValidUUID, isValidID, createErrorResponse } from "./utils";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const router = express.Router();
+  
+  // Set up the uploads directory
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  
+  // Configure multer for file uploads
+  const multerStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, uploadsDir);
+    },
+    filename: function (req, file, cb) {
+      // Create a unique filename with original extension
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+    }
+  });
+  
+  // Create a multer upload instance with size and file type restrictions
+  const upload = multer({
+    storage: multerStorage,
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB max file size
+    },
+    fileFilter: function (req, file, cb) {
+      // Accept only jpg, jpeg, png file types
+      const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+      if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error(`Invalid file type. Only JPG and PNG are allowed. Got: ${file.mimetype}`), false);
+      }
+    }
+  });
 
   // Helper function to format time ago
   const formatTimeAgo = (date: Date) => {
