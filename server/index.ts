@@ -8,12 +8,19 @@ import rateLimit from "express-rate-limit";
 
 const app = express();
 
-// Security middleware
+// Trust first proxy for rate limiting to work correctly
+app.set('trust proxy', 1);
+
+// Security middleware - aangepast voor ontwikkelomgeving
+const isDev = app.get("env") === "development";
+
 app.use(helmet({
-  contentSecurityPolicy: {
+  contentSecurityPolicy: isDev ? false : {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       "img-src": ["'self'", "data:", "blob:"],
+      "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      "connect-src": ["'self'", "ws:", "wss:"],
     },
   }
 }));
