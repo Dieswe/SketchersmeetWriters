@@ -52,7 +52,7 @@ export default function UploadModal({ prompt, onClose, onSubmit }: UploadModalPr
       return;
     }
 
-    if (isUploadingDrawing && !previewUrl) {
+    if (isUploadingDrawing && !previewUrl && !fileInputRef.current?.files?.length) {
       toast({
         title: "Fout",
         description: "Je moet een afbeelding uploaden voordat je kunt doorgaan.",
@@ -64,17 +64,72 @@ export default function UploadModal({ prompt, onClose, onSubmit }: UploadModalPr
     try {
       setIsUploading(true);
       
-      // In a real application, we would upload the file to a server here
-      // For now, we'll simulate a delay
+      let contentValue = "";
+      
+      // Als het een beeldupload is, eerst het bestand uploaden via de nieuwe API
+      if (isUploadingDrawing && fileInputRef.current?.files?.length) {
+        const file = fileInputRef.current.files[0];
+        
+        // Controleer bestandsgrootte client-side (maximaal 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          toast({
+            title: "Fout",
+            description: "Het bestand is te groot. Maximale grootte is 5MB.",
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          return;
+        }
+        
+        // Controleer bestandstype client-side
+        if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+          toast({
+            title: "Fout",
+            description: "Alleen JPG en PNG bestanden zijn toegestaan.",
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          return;
+        }
+        
+        // Upload het bestand met FormData
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        try {
+          const uploadResponse = await fetch('/api/upload/image', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json();
+            throw new Error(errorData.message || 'Bestandsupload mislukt');
+          }
+          
+          const imageData = await uploadResponse.json();
+          contentValue = imageData.path; // Gebruik het serverpad voor de content
+          
+        } catch (uploadError: any) {
+          console.error('File upload error:', uploadError);
+          toast({
+            title: "Fout bij uploaden",
+            description: uploadError.message || "Er is iets misgegaan bij het uploaden van de afbeelding.",
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          return;
+        }
+      } else {
+        // Voor tekstuploads, gebruik gewoon de invoertekst
+        contentValue = storyText;
+      }
+      
+      // Maak de submission met het bestandspad of tekst
       const submissionData = {
-        promptId: parseInt(prompt.id),  // ID als nummer doorgeven
-        userId: 1,                      // Gebruiker 1 (test gebruiker)
-        type: isUploadingDrawing
-          ? 'image'                     // tekenupload
-          : 'text',                     // tekstupload
-        content: isUploadingDrawing
-          ? previewUrl || ""            // Fallback naar lege string
-          : storyText
+        promptId: prompt.id,
+        type: isUploadingDrawing ? 'image' : 'text',
+        content: contentValue
       };
       
       await apiRequest('POST', '/api/submissions', submissionData);
@@ -82,6 +137,11 @@ export default function UploadModal({ prompt, onClose, onSubmit }: UploadModalPr
       // Invalidate relevant queries to refetch data
       await queryClient.invalidateQueries({
         queryKey: ['/api/prompts', prompt.id, 'submissions'],
+      });
+      
+      toast({
+        title: "Succes!",
+        description: "Je bijdrage is succesvol geüpload.",
       });
       
       onSubmit();
@@ -148,10 +208,10 @@ export default function UploadModal({ prompt, onClose, onSubmit }: UploadModalPr
                 type="file"
                 id="drawing-upload"
                 className="hidden"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/jpg"
                 onChange={handleFileChange}
               />
-              <p className="mt-2 text-sm text-gray-500">JPG, PNG of GIF (max. 5MB)</p>
+              <p className="mt-2 text-sm text-gray-500">Alleen JPG en PNG bestanden (max. 5MB)</p>
             </div>
           </div>
         )}
