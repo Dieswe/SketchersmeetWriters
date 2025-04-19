@@ -5,7 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Prompt, UserRole } from "@/lib/types";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 
@@ -132,7 +131,12 @@ export default function UploadModal({ prompt, onClose, onSubmit }: UploadModalPr
         content: contentValue
       };
       
-      await apiRequest('POST', '/api/submissions', submissionData);
+      await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submissionData),
+        credentials: 'include'
+      });
       
       // Invalidate relevant queries to refetch data
       await queryClient.invalidateQueries({

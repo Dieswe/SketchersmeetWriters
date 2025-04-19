@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { apiRequest } from '@/lib/queryClient';
 
 export default function SecurityCheck() {
   const [headers, setHeaders] = useState<Record<string, string>>({});
@@ -31,9 +30,10 @@ export default function SecurityCheck() {
     const maxRequests = 15;
     for (let i = 0; i < maxRequests; i++) {
       try {
-        await apiRequest('/api/prompts', {
+        await fetch('/api/prompts', {
           method: 'GET',
-          headers: { 'X-Test-Rate-Limit': 'true' }
+          headers: { 'X-Test-Rate-Limit': 'true' },
+          credentials: 'include'
         });
         successCount++;
         setRateLimitTest({

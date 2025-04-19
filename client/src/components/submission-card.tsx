@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Submission } from "@/lib/types";
-import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -27,8 +26,11 @@ export default function SubmissionCard({ submission, isOwnSubmission }: Submissi
       setLikesCount(prev => newLikeStatus ? prev + 1 : prev - 1);
       
       // Make API request
-      await apiRequest('POST', `/api/submissions/${submission.id}/like`, {
-        liked: newLikeStatus
+      await fetch(`/api/submissions/${submission.id}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ liked: newLikeStatus }),
+        credentials: 'include'
       });
       
       // Invalidate query to refresh data
