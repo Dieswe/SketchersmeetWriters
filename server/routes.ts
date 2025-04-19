@@ -47,7 +47,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (allowedMimeTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new Error(`Invalid file type. Only JPG and PNG are allowed. Got: ${file.mimetype}`), false);
+        // Create custom error for invalid file type
+        const error: any = new Error(`Invalid file type. Only JPG and PNG are allowed. Got: ${file.mimetype}`);
+        error.code = 'INVALID_FILE_TYPE';
+        // Call callback with error
+        cb(error);
       }
     }
   });
@@ -62,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Format prompt for API response
   const formatPrompt = async (prompt: any) => {
-    const creator = await storage.getUser(prompt.creatorId);
+    const creator = await dataStorage.getUser(prompt.creatorId);
     return {
       id: prompt.id.toString(),
       creator: {
@@ -74,7 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       type: prompt.type,
       content: prompt.content,
       isActive: prompt.isActive,
-      contributionsCount: (await storage.getSubmissionsByPromptId(prompt.id)).length,
+      contributionsCount: (await dataStorage.getSubmissionsByPromptId(prompt.id)).length,
       commentsCount: prompt.comments,
       likes: prompt.likes,
       comments: prompt.comments,
@@ -83,8 +87,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Format submission for API response
   const formatSubmission = async (submission: any, userId?: string) => {
-    const creator = submission.userId ? await storage.getUser(submission.userId) : null;
-    const isLiked = userId && await storage.getLike(userId, submission.id) !== undefined;
+    const creator = submission.userId ? await dataStorage.getUser(submission.userId) : null;
+    const isLiked = userId && await dataStorage.getLike(userId, submission.id) !== undefined;
     
     return {
       id: submission.id.toString(),
@@ -118,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get prompts from database based on role
-      const prompts = await storage.getPromptsByCreatorRole(role);
+      const prompts = await dataStorage.getPromptsByCreatorRole(role);
       const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
       
       // Add logging for debugging
@@ -135,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   router.get("/prompts/popular", async (req: Request, res: Response) => {
     try {
       // Get the 6 most popular prompts from database
-      const prompts = await storage.getPopularPrompts(6);
+      const prompts = await dataStorage.getPopularPrompts(6);
       const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
       
       // Add logging for debugging
@@ -152,7 +156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   router.get("/prompts/daily", async (req: Request, res: Response) => {
     try {
       // Get all daily prompts from database
-      const prompts = await storage.getDailyPrompts();
+      const prompts = await dataStorage.getDailyPrompts();
       const formattedPrompts = await Promise.all(prompts.map(formatPrompt));
       
       // Add logging for debugging
@@ -179,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Try to find the prompt by ID (might be UUID or another format)
       try {
-        const prompt = await storage.getPrompt(id);
+        const prompt = await dataStorage.getPrompt(id);
         if (!prompt) {
           return res.status(404).json(
             createErrorResponse("Prompt not found", 404)
@@ -220,7 +224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         // Try to find the prompt first
-        const prompt = await storage.getPrompt(promptId);
+        const prompt = await dataStorage.getPrompt(promptId);
         if (!prompt) {
           return res.status(404).json(
             createErrorResponse("Prompt not found", 404)
@@ -228,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // If prompt exists, get its submissions
-        const submissions = await storage.getSubmissionsByPromptId(promptId);
+        const submissions = await dataStorage.getSubmissionsByPromptId(promptId);
         const userId = "1"; // Mock user ID for now as string
         const formattedSubmissions = await Promise.all(
           submissions.map(sub => formatSubmission(sub, userId))
@@ -289,9 +293,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .limit(1);
           
         if (imageSubmission) {
-          const promptCreator = await storage.getUser(prompt.creatorId);
+          const promptCreator = await dataStorage.getUser(prompt.creatorId);
           const submissionCreator = imageSubmission.userId 
-            ? await storage.getUser(imageSubmission.userId)
+            ? await dataStorage.getUser(imageSubmission.userId)
             : null;
             
           collaborations.push({
@@ -329,6 +333,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST upload image file
+  router.post("/upload/image", upload.single('image'), async (req: Request, res: Response) => {
+    try {
+      // Check if file was provided and uploaded successfully
+      if (!req.file) {
+        return res.status(400).json(
+          createErrorResponse("No image file uploaded or invalid file type", 400)
+        );
+      }
+      
+      // Return the file path that can be used in submissions
+      const relativePath = `/uploads/${req.file.filename}`;
+      const absolutePath = req.file.path;
+      
+      console.log(`File uploaded successfully: ${absolutePath}`);
+      
+      res.status(201).json({
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: relativePath
+      });
+    } catch (error: any) {
+      // Handle multer errors
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json(
+          createErrorResponse("File too large. Maximum size is 5MB", 400)
+        );
+      }
+      
+      if (error.code === 'INVALID_FILE_TYPE') {
+        return res.status(400).json(
+          createErrorResponse(error.message || "Invalid file type", 400)
+        );
+      }
+      
+      console.error("Error uploading file:", error);
+      res.status(500).json(
+        createErrorResponse("Error uploading file", 500)
+      );
+    }
+  });
+  
   // POST create submission
   router.post("/submissions", async (req: Request, res: Response) => {
     try {
@@ -359,7 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify prompt exists
-      const prompt = await storage.getPrompt(req.body.promptId);
+      const prompt = await dataStorage.getPrompt(req.body.promptId);
       if (!prompt) {
         return res.status(404).json(
           createErrorResponse("Prompt not found", 404)
@@ -377,7 +425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate using schema
       const validatedData = insertSubmissionSchema.parse(submissionData);
-      const submission = await storage.createSubmission(validatedData);
+      const submission = await dataStorage.createSubmission(validatedData);
       const formattedSubmission = await formatSubmission(submission);
       
       // Log successful submission
@@ -414,7 +462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = "1"; // For now, use a fixed user ID (guest user) as string
       // const userId = req.session?.userId; // If using sessions
       
-      const submission = await storage.getSubmission(submissionId);
+      const submission = await dataStorage.getSubmission(submissionId);
       if (!submission) {
         return res.status(404).json(
           createErrorResponse("Submission not found", 404)
@@ -429,13 +477,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const liked = req.body.liked === true;
-      const existingLike = await storage.getLike(userId, submissionId);
+      const existingLike = await dataStorage.getLike(userId, submissionId);
       
       if (liked && !existingLike) {
-        await storage.createLike({ userId, submissionId });
+        await dataStorage.createLike({ userId, submissionId });
         console.log(`User ${userId} liked submission ${submissionId}`);
       } else if (!liked && existingLike) {
-        await storage.deleteLike(userId, submissionId);
+        await dataStorage.deleteLike(userId, submissionId);
         console.log(`User ${userId} unliked submission ${submissionId}`);
       }
       
@@ -461,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if submission exists
-      const submission = await storage.getSubmission(submissionId);
+      const submission = await dataStorage.getSubmission(submissionId);
       if (!submission) {
         return res.status(404).json(
           createErrorResponse("Submission not found", 404)
@@ -486,7 +534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Create comment in database
-      const comment = await storage.createComment(validatedData);
+      const comment = await dataStorage.createComment(validatedData);
       
       // Log successful comment creation
       console.log(`User ${userId} commented on submission ${submissionId}: "${validatedData.content.substring(0, 30)}${validatedData.content.length > 30 ? '...' : ''}"`);
